@@ -51,7 +51,6 @@ export function useAuth() {
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const {token} = useAuth();
-    console.log(token)
   if (!token) {
     return <Navigate to="/auth" />;
   }

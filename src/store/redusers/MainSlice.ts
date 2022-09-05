@@ -8,8 +8,18 @@ export interface IUser {
 }
 
 interface IState {
-    links: Array<string>,
-    access_token: string
+    links: Array<ILink>,
+    access_token: string,
+    loadLinks: boolean,
+    limit: number,
+    offset: number
+}
+
+export interface ILink {
+    id: number,
+    short: string,
+    target: string,
+    counter: number
 }
 
 interface IShortedLink {
@@ -17,9 +27,18 @@ interface IShortedLink {
     token: string | null
 }
 
+interface IGetStat {
+    token: string | null,
+    limit: number,
+    offset: number
+}
+
 const initialState: IState = {
     links: [],
-    access_token: ''
+    access_token: '',
+    loadLinks: false,
+    offset: 0,
+    limit: 5
 }
 
 export const registerUser = createAsyncThunk(
@@ -31,6 +50,22 @@ export const registerUser = createAsyncThunk(
                 password: user.password
             }
         });
+    }
+)
+
+export const getStatistic = createAsyncThunk(
+    'main/getStatistic',
+    async (data: IGetStat) => {
+        const response = await axios.get('http://79.143.31.216/statistics', {
+            headers: {
+                Authorization: `Bearer ${data.token}`
+            },
+            params: {
+                offset: data.offset,
+                limit: data.limit
+            }
+        })
+        return response.data
     }
 )
 
@@ -50,7 +85,7 @@ export const sendShortLink = createAsyncThunk(
                 Authorization: `Bearer ${data.token}`
             },
             params: {
-                link: data.link
+                link: data.link,
             }
         })
         return response.data;
@@ -65,10 +100,18 @@ export const MainSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(registerUser.fulfilled, (state, action) => {
-                console.log(action)
+                console.log(action);
             })
             .addCase(sendShortLink.fulfilled, (state, action) => {
-                console.log(action)
+                console.log(action);
+            })
+            .addCase(getStatistic.fulfilled, (state, action) => {
+                state.loadLinks = false;
+                state.offset = action.meta.arg.offset;
+                state.links = action.payload;
+            })
+            .addCase(getStatistic.pending, (state, action) => {
+                state.loadLinks = true;
             })
     }
 })
