@@ -1,5 +1,4 @@
-import React, {FC, useEffect} from 'react';
-import {useAppDispatch} from "./hooks/redux";
+import React, {FC} from 'react';
 import {Navigate, Route, Routes} from "react-router-dom";
 import Auth from "./components/Auth/Auth";
 import Register from "./components/register/Register";

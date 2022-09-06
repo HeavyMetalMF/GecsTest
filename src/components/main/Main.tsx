@@ -2,7 +2,7 @@ import React, {ChangeEvent, FC, useEffect, useState} from 'react';
 import {Form, Loader, Segment, Table} from "semantic-ui-react";
 import './main.css';
 import {useAppDispatch, useAppSelector} from "../../hooks/redux";
-import {getStatistic, sendShortLink} from "../../store/redusers/MainSlice";
+import {getLengthStatistic, getStatistic, sendShortLink} from "../../store/redusers/MainSlice";
 import {useAuth} from "../../App";
 import LinkRow from "../linksRow/LinkRow";
 import Paginator from "../linksRow/Paginator";
@@ -12,17 +12,18 @@ const Main: FC = () => {
     const [link, setLink] = useState<string>('');
     const [sort, setSort] = useState<'ascending' | 'descending' | undefined>('ascending');
     const [column, setColumn] = useState<string>('');
-    // const [column, setColumn] = useState<string>('');
+    const {links, loadLinks, limit, offset} = useAppSelector(state => state.MainSlice);
     const dispatch = useAppDispatch();
-    const {links, loadLinks} = useAppSelector(state => state.MainSlice)
-    const data = {limit: 5, token, offset: 0}
+
+    const initialData = {limit, token, offset}
 
     useEffect(() => {
-        dispatch(getStatistic(data));
+        dispatch(getStatistic(initialData));
+        dispatch(getLengthStatistic(token));
     }, [])
 
     const shortLink = (link: string) => {
-        const shortData = {link, token};
+        const shortData = {link, token, limit};
         dispatch(sendShortLink(shortData));
         setLink('');
     }
@@ -31,14 +32,18 @@ const Main: FC = () => {
         setLink(e.target.value);
     }
 
-    const sortColumn = (column: string) => {
-        console.log(column)
-        if (column == 'count'){
-            // сделать обартную сортировку
-            //то есть сделать запрос с обратной сортировкой
-            setSort('descending');
+    const sortColumn = (col: string) => {
+        if (column != ''){
+            const data = {token, limit, offset, order: sort === 'ascending' ? `desc_${col}` : `asc_${col}`}
+            dispatch(getStatistic(data));
+            sort === 'ascending' ? setSort('descending') : setSort('ascending');
+            setColumn(col);
         }
-        setColumn('count');
+        else{
+            const data = {token, limit, offset, order: `asc_${col}`}
+            dispatch(getStatistic(data));
+            setColumn(col);
+        }
     }
 
     return (
@@ -58,12 +63,20 @@ const Main: FC = () => {
                         <Table.Header>
                             <Table.Row>
                                 <Table.HeaderCell
-                                    onClick={() => sortColumn(column)}
-                                    sorted={column == 'count' ? sort : undefined}>
+                                    onClick={() => sortColumn('short')}
+                                    sorted={column == 'short' ? sort : undefined}>
                                         Короткая ссылка
                                 </Table.HeaderCell>
-                                <Table.HeaderCell>Исходная ссылка</Table.HeaderCell>
-                                <Table.HeaderCell>Кол-во пререходов по ссылке</Table.HeaderCell>
+                                <Table.HeaderCell
+                                    onClick={() => sortColumn('target')}
+                                    sorted={column == 'target' ? sort : undefined}>
+                                        Исходная ссылка
+                                </Table.HeaderCell>
+                                <Table.HeaderCell
+                                    onClick={() => sortColumn('counter')}
+                                    sorted={column == 'counter' ? sort : undefined}>
+                                        Кол-во пререходов по ссылке
+                                </Table.HeaderCell>
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
@@ -77,7 +90,10 @@ const Main: FC = () => {
                         <Table.Footer>
                             <Table.Row>
                                 <Table.HeaderCell colSpan='3'>
-                                    <Paginator />
+                                    <Paginator links={links} order={
+                                        column != ''
+                                            ? sort === 'ascending' ? `asc_${column}` : `desc_${column}`
+                                            : null} />
                                 </Table.HeaderCell>
                             </Table.Row>
                         </Table.Footer>

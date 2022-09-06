@@ -1,28 +1,37 @@
-import React, {FC, useState} from 'react';
+import React, {FC} from 'react';
 import {Icon, Menu} from "semantic-ui-react";
-import {getStatistic} from "../../store/redusers/MainSlice";
+import {getStatistic, ILink} from "../../store/redusers/MainSlice";
 import {useAppDispatch, useAppSelector} from "../../hooks/redux";
 import {useAuth} from "../../App";
 
-// interface IPaginator {
-//     totalUsersCount: number,
-//     pageSize: number,
-//     portionSize: number,
-//     currentPage: number,
-// }
+interface IPaginator {
+    order: string | null
+    links: ILink[]
+}
 
-const Paginator: FC = () => {
-    const {offset, limit} = useAppSelector(state => state.MainSlice)
+interface IData {
+    offset: number,
+    limit: number,
+    token: string | null,
+    order?: string
+}
+
+const Paginator: FC<IPaginator> = ({order, links}) => {
+    const {offset, limit, linksLength} = useAppSelector(state => state.MainSlice)
     const {token} = useAuth();
     const dispatch = useAppDispatch();
 
     const getNewPage = () => {
-        const data = {offset: offset + 5, limit, token}
+        const data: IData = {offset: offset + 5, limit, token}
+        if (order)
+            data['order'] = order
         dispatch(getStatistic(data));
     }
 
     const getPrevPage = () => {
-        const data = {offset: offset - 5, limit, token}
+        const data: IData = {offset: offset - 5, limit, token}
+        if (order)
+            data['order'] = order
         dispatch(getStatistic(data));
     }
 
@@ -33,9 +42,13 @@ const Paginator: FC = () => {
                 <Icon name='chevron left'/>
             </Menu.Item>
             }
-            <Menu.Item onClick={() => getNewPage()} as='a' icon>
-                <Icon name='chevron right' />
-            </Menu.Item>
+            {
+                linksLength > limit && links.length >= limit ?
+                     <Menu.Item onClick={() => getNewPage()} as='a' icon>
+                        <Icon name='chevron right' />
+                    </Menu.Item>
+                    : ''
+            }
         </Menu>
     );
 };

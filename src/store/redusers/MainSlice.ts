@@ -12,7 +12,8 @@ interface IState {
     access_token: string,
     loadLinks: boolean,
     limit: number,
-    offset: number
+    offset: number,
+    linksLength: number
 }
 
 export interface ILink {
@@ -24,13 +25,15 @@ export interface ILink {
 
 interface IShortedLink {
     link: string,
-    token: string | null
+    token: string | null,
+    limit: number
 }
 
 interface IGetStat {
-    token: string | null,
+    token?: string | null,
     limit: number,
-    offset: number
+    offset: number,
+    order?: string
 }
 
 const initialState: IState = {
@@ -38,32 +41,50 @@ const initialState: IState = {
     access_token: '',
     loadLinks: false,
     offset: 0,
-    limit: 5
+    limit: 5,
+    linksLength: 0
 }
 
 export const registerUser = createAsyncThunk(
     'main/registerUser',
     async (user: IUser) => {
-        return await axios.post('http://79.143.31.216/register', {},{
+        const response =  await axios.post('http://79.143.31.216/register', {},{
             params:{
                 username: user.username,
                 password: user.password
             }
         });
+        return response.data
+    }
+)
+
+export const getLengthStatistic = createAsyncThunk(
+    'main/getLengthStatistic',
+    async (token: string | null) => {
+        const response = await axios.get('http://79.143.31.216/statistics', {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        })
+        return response.data
     }
 )
 
 export const getStatistic = createAsyncThunk(
     'main/getStatistic',
     async (data: IGetStat) => {
+        const params: IGetStat = {
+            offset: data.offset,
+            limit: data.limit
+        }
+        if (data.order)
+            params['order'] = data.order
+
         const response = await axios.get('http://79.143.31.216/statistics', {
             headers: {
                 Authorization: `Bearer ${data.token}`
             },
-            params: {
-                offset: data.offset,
-                limit: data.limit
-            }
+            params: params
         })
         return response.data
     }
@@ -100,10 +121,15 @@ export const MainSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(registerUser.fulfilled, (state, action) => {
-                console.log(action);
             })
             .addCase(sendShortLink.fulfilled, (state, action) => {
-                console.log(action);
+                state.loadLinks = false;
+                state.linksLength = state.linksLength + 1;
+                if (state.links.length < action.meta.arg.limit)
+                    state.links.push(action.payload);
+            })
+            .addCase(sendShortLink.pending, (state, action) => {
+                state.loadLinks = true;
             })
             .addCase(getStatistic.fulfilled, (state, action) => {
                 state.loadLinks = false;
@@ -112,6 +138,9 @@ export const MainSlice = createSlice({
             })
             .addCase(getStatistic.pending, (state, action) => {
                 state.loadLinks = true;
+            })
+            .addCase(getLengthStatistic.fulfilled, (state, action) => {
+                state.linksLength = action.payload.length
             })
     }
 })
